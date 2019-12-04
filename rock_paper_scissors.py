@@ -14,9 +14,11 @@ def main():
 
     # Initialize game state.
     playing = True
+    current_pattern = init_move_pattern(3)
     player_wins = 0
     cpu_wins = 0
     ties = 0
+    player_pattern_map = {}
 
     # Prompt the player for their name.
     player_name = input("Enter your name (up to 16 characters): ")
@@ -35,6 +37,9 @@ def main():
     # Main game loop.
     while playing:
 
+        # Get CPU move.
+        cpu_move = get_cpu_move(player_pattern_map, current_pattern)
+
         # Get player move.
         player_move = input("Show ya moves: ")
         player_move = player_move.upper()
@@ -42,13 +47,14 @@ def main():
 
         # If player chose a valid move, play turn.
         if player_move in move_set:
-            cpu_move = random.choice(move_set)
 
             player_move = move_set.index(player_move)
-            cpu_move = move_set.index(cpu_move)
 
+            # Update current move pattern and pattern map.
+            update_pattern_map(player_pattern_map, current_pattern, player_move)
+            current_pattern = get_updated_pattern(current_pattern, player_move)
+            
             draw_match(player_move, cpu_move, player_name)
-            print("")
 
             # Get the result of the match.
             winner = get_winner(player_move, cpu_move)
@@ -70,10 +76,11 @@ def main():
             print("COMPUTER'S SCORE: " + str(cpu_wins))
             print("TIED GAMES: " + str(ties))
 
+        # Show instructions.
         elif player_move == "?":
             print_instructions()
             
-        # If player chooses to quit, skip turn and stop game.        
+        # If player chooses to quit, don't do another turn.        
         elif player_move == "Q":
             print("Thanks for playing :)")
             playing = False
@@ -131,9 +138,69 @@ def print_instructions():
     print("   \"I\" Info - Game stats")
     print("   \"?\" Help - Show these instructions again")
     print("   \"Q\" Quit - End the game")
+
+
+# Pattern stuff
+
+
+# Returns a blank move pattern of size n.
+def init_move_pattern(n):
+    new_move_pattern = ["N"] * n
+    return new_move_pattern
+
+
+# Returns a move pattern with the oldest move dropped and move added.
+def get_updated_pattern(pattern, move):
+    move_token = move_set[move]
+    updated_pattern = pattern[1:len(pattern)]
+    updated_pattern.append(move_token)
+    return updated_pattern
+
+
+# Creates a key for a move pattern.
+def get_pattern_key(pattern):
+    key = ""
+    for m in pattern:
+        key = key + m
+    return key
+
+
+# Updates the move distribution for a given pattern.
+def update_pattern_map(pattern_map, pattern, move):
+    pattern_key = get_pattern_key(pattern)
     
+    if pattern_key not in pattern_map:
+        new_move_distribution = [0] * len(move_set)
+        pattern_map[pattern_key] = new_move_distribution
+
+    move_distribution = pattern_map[pattern_key]
+    move_distribution[move] = move_distribution[move] + 1
+
+
+# Tries to counter the most likely next move based on the pattern. Returns a random move if pattern isn't in pattern_map.
+def get_cpu_move(pattern_map, pattern):
+
+    # Pick a random move.
+    cpu_move = random.randint(0, len(move_set) - 1)
+
     
+    pattern_key = get_pattern_key(pattern)
+
+    if pattern_key in pattern_map:
+
+        # Find the most likely move to come next and pick the counter.
+        move_distribution = pattern_map[pattern_key]
+        likely_player_move = move_distribution.index(max(move_distribution))
+
+        cpu_move = (likely_player_move + 1) % len(move_set)
+
+    return cpu_move
+
+ 
 main()
+
+
+# ASCII drawings
 
 
 # ASCII Scissors
@@ -165,7 +232,7 @@ main()
 # "                "
 # "      PAPER     "
 # 
-# TODO - implement template. Adjust template to have margins (5 x 7 array)
+# TODO - implement template.
 # "   _________    "
 # "  |         |#  "
 # "  | {} |  "
